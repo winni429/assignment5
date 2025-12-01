@@ -1,0 +1,1675 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IDV Assignment 5 - Unified Integration (Final Fixed)</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+    
+    <script>
+        // Tailwind Config (From Assignment 3)
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#3B82F6', secondary: '#10B981', accent: '#8B5CF6', 
+                        neutral: '#64748B', light: '#F8FAFC', dark: '#1E293B', gold: '#F59E0B'
+                    },
+                    fontFamily: {
+                        sans: ['Inter', 'system-ui', 'sans-serif'],
+                    },
+                }
+            }
+        }
+    </script>
+    
+    <style type="text/tailwindcss">
+        /* 核心布局和组件样式 */
+        @layer utilities {
+            .chart-container { @apply relative h-[400px] w-full md:w-3/4 mx-auto my-8; }
+            .control-btn { @apply px-4 py-2 rounded-md bg-primary/10 hover:bg-primary/20 transition-colors duration-300 cursor-pointer text-gray-800 font-medium; }
+            
+            /* 页面内容切换样式 */
+            .page-content { display: none; } 
+            .page-content.active { display: block; animation: fadeIn 0.5s ease; }
+            @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+            .a3-page-content { display: none; }
+            .a3-page-content.active { display: block; }
+
+            /* A1 Table Styling */
+            #psiTable { @apply border-collapse w-full my-5 shadow-lg rounded-lg overflow-hidden; }
+            #psiTable th { @apply bg-dark text-white font-bold p-3 text-left; }
+            #psiTable td { @apply border border-gray-200 p-3 text-left; }
+            .status { @apply inline-block px-2 py-0.5 rounded text-xs text-white ml-2; }
+            .status-good { @apply bg-secondary; }
+            .status-moderate { @apply bg-gold; }
+            .status-unhealthy { @apply bg-red-500; }
+            .psi-info-section { @apply bg-primary/10 p-4 rounded-lg mb-5 border-l-4 border-primary; }
+        
+            /* A2 Table Styling */
+            #svgTable { @apply border-collapse w-full my-8 bg-white shadow-lg; }
+            #svgTable th, #svgTable td { @apply border border-gray-300 p-3 text-center; }
+            #svgTable th { @apply bg-gray-200 font-bold; }
+            #svgTable img, #svgTable svg { @apply max-w-[120px] max-h-[120px] mx-auto block; }
+            
+            /* A4 Heatmap Styling (Minimal styling to ensure functional display) */
+            .heatmap-container { max-width: 1400px; margin: 0 auto; }
+            #heatmap-chart { 
+                display: flex;
+                justify-content: center; 
+                align-items: flex-start;
+                padding: 20px 0;
+            }
+            .d3-tooltip { 
+                position: absolute;
+                background-color: rgba(0, 0, 0, 0.8); 
+                color: white; 
+                padding: 8px 12px; 
+                border-radius: 4px; 
+                font-size: 14px; 
+                pointer-events: none; 
+                opacity: 0;
+                transition: opacity 0.3s; 
+                z-index: 100;
+                white-space: nowrap; 
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+    
+    <nav class="bg-white shadow-md sticky top-0 z-50">
+        <div class="container mx-auto px-4">
+            <div class="flex items-center justify-between h-16">
+                <div class="font-bold text-xl text-primary">IDV Assignment 5 Unified Page</div>
+                <div class="flex space-x-2 sm:space-x-4 overflow-x-auto">
+                    <button class="nav-btn px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 transition-colors" data-page="page-overview">Overview</button>
+                    <button class="nav-btn px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 transition-colors" data-page="page-a1">A1: PSI Data</button>
+                    <button class="nav-btn px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 transition-colors" data-page="page-a2">A2: SVG Transform</button>
+                    <button class="nav-btn px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 transition-colors" data-page="page-a3">A3: Interactive Suite</button>
+                    <button class="nav-btn px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 transition-colors" data-page="page-a4">A4: Heatmap</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 py-8">
+        
+        <div id="page-overview" class="page-content active bg-white rounded-lg shadow-lg p-6 max-w-5xl w-full mx-auto">
+            <h1 class="text-3xl font-bold text-center mb-6 text-gray-800">Assignment 5: Integration Overview</h1>
+            <div class="space-y-4 text-gray-700">
+                
+                <h2 class="text-xl font-semibold text-primary">Content Summary</h2>
+                <p>This page unifies the deliverables from Assignments 1 through 4 into a single, cohesive web application, utilizing a multi-page navigation structure to switch between the different components.</p>
+                
+                <h2 class="text-xl font-semibold text-primary">Integration Strategy</h2>
+                <p>The foundation for this unified page is derived from the **Assignment 3 (Interactive Visualizations)** template, leveraging its pre-configured **Tailwind CSS** framework and established navigation structure to ensure consistent presentation and smooth switching between the four assignments. Custom CSS from the other assignments was either replaced or contained within class scopes to minimize styling conflicts. All JavaScript logic for the four assignments was encapsulated within distinct initialization functions and triggered upon navigating to the respective sections.</p>
+                
+                <h2 class="text-xl font-semibold text-primary">Difficulties and Hardest Assignment</h2>
+                <p>The primary technical challenge in merging the four pieces was handling the conflicts arising from different libraries and container dependencies.</p>
+                
+                <p class="p-3 bg-red-100 border-l-4 border-red-500 italic font-bold">
+                    The Hardest Assignment to Integrate was **Assignment 4 (D3 Heatmap)**.
+                </p>
+                <p>**Reasoning:** The difficulty stems from D3.js's highly coupled nature regarding container dimensions and object rendering. The D3 script calculates its axes and drawing paths based on the exact dimensions available at the moment of initialization. To solve this, the D3 rendering logic needed to be contained within a dedicated function (`initPageA4`) and explicitly called *after* the container element is visible and its size is confirmed, preventing rendering issues common when D3 is placed in hidden or responsive containers.</p>
+            </div>
+        </div>
+
+        <div id="page-a1" class="page-content bg-white rounded-lg shadow-lg p-6 max-w-5xl w-full mx-auto">
+            <h1 class="text-2xl font-bold text-center mb-4 text-gray-800">Assignment 1: Singapore PSI Readings Dashboard</h1>
+            
+            <div class="psi-info-section">
+                <p><strong>PSI (Pollutant Standards Index)</strong> is a measure of air quality. Lower values indicate better air quality.</p>
+                <p>
+                    <span class="status status-good">Good (0-50)</span>
+                    <span class="status status-moderate">Moderate (51-100)</span>
+                    <span class="status status-unhealthy">Unhealthy (101+)</span>
+                </p>
+            </div>
+            <p class="last-updated">Last Updated: <span id="updateTime"></span></p>
+            <p class="refresh-status">Next Auto-Refresh: <span id="nextRefreshTime"></span></p>
+            
+            <table id="psiTable">
+                <thead>
+                    <tr>
+                        <th>Reading Type</th>
+                        <th>Description</th>
+                        <th>West</th>
+                        <th>East</th>
+                        <th>Central</th>
+                        <th>South</th>
+                        <th>North</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td colspan="7">Loading data...</td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div id="page-a2" class="page-content bg-white rounded-lg shadow-lg p-6 max-w-5xl w-full mx-auto">
+            <h1 class="text-2xl font-bold text-center mb-4 text-gray-800">Assignment 2: SVG Image Transformations</h1>
+            <p class="text-center text-gray-600 mb-6">Demonstrating CSS transform and filter effects on 10 SVG images.</p>
+            
+            <table id="svgTable">
+                <tr>
+                    <th>原始图片</th>
+                    <th>左右镜像</th>
+                    <th>旋转180度</th>
+                    <th>垂直压缩50%</th>
+                    <th>灰度效果</th>
+                </tr>
+                <tr><td><img src="svg1.svg" alt="原始svg1"></td><td><div style="transform: scaleX(-1);"><img src="svg1.svg" alt="左右镜像svg1"></div></td><td><div style="transform: rotate(180deg);"><img src="svg1.svg" alt="旋转180度svg1"></div></td><td><div style="transform: scaleY(0.5);"><img src="svg1.svg" alt="垂直压缩svg1"></div></td><td><img src="svg1.svg" style="filter: grayscale(100%);" alt="灰度svg1"></td></tr>
+                <tr><td><img src="svg2.svg" alt="原始svg2"></td><td><div style="transform: scaleX(-1);"><img src="svg2.svg" alt="左右镜像svg2"></div></td><td><div style="transform: rotate(180deg);"><img src="svg2.svg" alt="旋转180度svg2"></div></td><td><div style="transform: scaleY(0.5);"><img src="svg2.svg" alt="垂直压缩svg2"></div></td><td><img src="svg2.svg" style="filter: grayscale(100%);" alt="灰度svg2"></td></tr>
+                <tr><td><img src="svg3.svg" alt="原始svg3"></td><td><div style="transform: scaleX(-1);"><img src="svg3.svg" alt="左右镜像svg3"></div></td><td><div style="transform: rotate(180deg);"><img src="svg3.svg" alt="旋转180度svg3"></div></td><td><div style="transform: scaleY(0.5);"><img src="svg3.svg" alt="垂直压缩svg3"></div></td><td><img src="svg3.svg" style="filter: grayscale(100%);" alt="灰度svg3"></td></tr>
+                <tr><td><img src="svg4.svg" alt="原始svg4"></td><td><div style="transform: scaleX(-1);"><img src="svg4.svg" alt="左右镜像svg4"></div></td><td><div style="transform: rotate(180deg);"><img src="svg4.svg" alt="旋转180度svg4"></div></td><td><div style="transform: scaleY(0.5);"><img src="svg4.svg" alt="垂直压缩svg4"></div></td><td><img src="svg4.svg" style="filter: grayscale(100%);" alt="灰度svg4"></td></tr>
+                <tr><td><img src="svg5.svg" alt="原始svg5"></td><td><div style="transform: scaleX(-1);"><img src="svg5.svg" alt="左右镜像svg5"></div></td><td><div style="transform: rotate(180deg);"><img src="svg5.svg" alt="旋转180度svg5"></div></td><td><div style="transform: scaleY(0.5);"><img src="svg5.svg" alt="垂直压缩svg5"></div></td><td><img src="svg5.svg" style="filter: grayscale(100%);" alt="灰度svg5"></td></tr>
+                <tr><td><img src="svg6.svg" alt="原始svg6"></td><td><div style="transform: scaleX(-1);"><img src="svg6.svg" alt="左右镜像svg6"></div></td><td><div style="transform: rotate(180deg);"><img src="svg6.svg" alt="旋转180度svg6"></div></td><td><div style="transform: scaleY(0.5);"><img src="svg6.svg" alt="垂直压缩svg6"></div></td><td><img src="svg6.svg" style="filter: grayscale(100%);" alt="灰度svg6"></td></tr>
+                <tr><td><img src="svg7.svg" alt="原始svg7"></td><td><div style="transform: scaleX(-1);"><img src="svg7.svg" alt="左右镜像svg7"></div></td><td><div style="transform: rotate(180deg);"><img src="svg7.svg" alt="旋转180度svg7"></div></td><td><div style="transform: scaleY(0.5);"><img src="svg7.svg" alt="垂直压缩svg7"></div></td><td><img src="svg7.svg" style="filter: grayscale(100%);" alt="灰度svg7"></td></tr>
+                <tr><td><img src="svg8.svg" alt="原始svg8"></td><td><div style="transform: scaleX(-1);"><img src="svg8.svg" alt="左右镜像svg8"></div></td><td><div style="transform: rotate(180deg);"><img src="svg8.svg" alt="旋转180度svg8"></div></td><td><div style="transform: scaleY(0.5);"><img src="svg8.svg" alt="垂直压缩svg8"></div></td><td><img src="svg8.svg" style="filter: grayscale(100%);" alt="灰度svg8"></td></tr>
+                <tr><td><img src="svg9.svg" alt="原始svg9"></td><td><div style="transform: scaleX(-1);"><img src="svg9.svg" alt="左右镜像svg9"></div></td><td><div style="transform: rotate(180deg);"><img src="svg9.svg" alt="旋转180度svg9"></div></td><td><div style="transform: scaleY(0.5);"><img src="svg9.svg" alt="垂直压缩svg9"></div></td><td><img src="svg9.svg" style="filter: grayscale(100%);" alt="灰度svg9"></td></tr>
+                <tr><td><img src="svg10.svg" alt="原始svg10"></td><td><div style="transform: scaleX(-1);"><img src="svg10.svg" alt="左右镜像svg10"></div></td><td><div style="transform: rotate(180deg);"><img src="svg10.svg" alt="旋转180度svg10"></div></td><td><div style="transform: scaleY(0.5);"><img src="svg10.svg" alt="垂直压缩svg10"></div></td><td><img src="svg10.svg" style="filter: grayscale(100%);" alt="灰度svg10"></td></tr>
+            </table>
+        </div>
+
+        <div id="page-a3" class="page-content bg-white rounded-lg shadow-lg p-6 max-w-5xl w-full mx-auto">
+            <h1 class="text-2xl font-bold text-center mb-4 text-gray-800">Assignment 3: Interactive Visualizations Suite</h1>
+            
+            <div class="flex justify-center gap-4 mb-4 border-b pb-4">
+                <button class="nav-btn-a3 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 transition-colors" data-page="a3-page1">Vector Diagram</button>
+                <button class="nav-btn-a3 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 transition-colors" data-page="a3-page2">Data Charts</button>
+                <button class="nav-btn-a3 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 transition-colors" data-page="a3-page3">Venn Diagram</button>
+                <button class="nav-btn-a3 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 transition-colors" data-page="a3-page4">Validation Chart</button>
+                <button class="nav-btn-a3 px-3 py-2 rounded-md text-sm font-medium hover:bg-gray-100 transition-colors" data-page="a3-page5">Density Distribution</button>
+            </div>
+
+            <div id="a3-page1" class="a3-page-content active">
+                <h2 class="text-xl font-semibold text-center mb-4 text-gray-700">Vector Parallelogram Illustration</h2>
+                <div class="flex justify-center gap-4 mb-4 flex-wrap">
+                    <button id="zoom-in" class="bg-primary hover:bg-primary/80 text-white px-3 py-1 rounded-md transition-colors text-sm"><i class="fa fa-search-plus mr-1"></i> Zoom In</button>
+                    <button id="zoom-out" class="bg-primary hover:bg-primary/80 text-white px-3 py-1 rounded-md transition-colors text-sm"><i class="fa fa-search-minus mr-1"></i> Zoom Out</button>
+                    <button id="show-coords" class="bg-secondary hover:bg-secondary/80 text-white px-3 py-1 rounded-md transition-colors text-sm"><i class="fa fa-crosshairs mr-1"></i> Show Coordinates</button>
+                    <button id="reset-btn" class="bg-gray-600 hover:bg-gray-700 text-white px-3 py-1 rounded-md transition-colors text-sm"><i class="fa fa-refresh mr-1"></i> Reset View</button>
+                </div>
+                <div class="relative w-full aspect-square max-w-2xl mx-auto border border-gray-200 rounded-md" id="vector-diagram">
+                    <div id="vector-info" class="info-box absolute top-2 right-2 hidden"></div>
+                    <svg class="w-full h-full parallelogram" viewBox="0 50 500 400" id="vector-svg">
+                        <pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M 50 0 L 0 0 0 50" fill="none" stroke="#f0f0f0" stroke-width="0.5"/></pattern>
+                        <rect width="100%" height="100%" fill="url(#grid)" />
+                        <path d="M150,100 L400,100 L300,300 L50,300 Z" fill="none" stroke="#333" stroke-width="2" class="vector-line" />
+                        <path d="M150,100 L300,300" fill="none" stroke="#9CA3AF" stroke-width="2" stroke-dasharray="5,5" class="vector-line diagonal-1" />
+                        <path d="M400,100 L50,300" fill="none" stroke="#60A5FA" stroke-width="2" stroke-dasharray="5,5" class="vector-line diagonal-2" />
+                        <path d="M150,100 L400,100" fill="none" stroke="#3B82F6" stroke-width="3" class="vector-line e1a" />
+                        <polygon points="400,100 385,95 385,105" fill="#3B82F6" class="vector-arrow draggable" data-vector="e1a" />
+                        <path d="M150,100 L50,300" fill="none" stroke="#10B981" stroke-width="3" class="vector-line e2a" />
+                        <polygon points="50,300 65,295 65,305" fill="#10B981" class="vector-arrow draggable" data-vector="e2a" />
+                        <path d="M50,300 L300,300" fill="none" stroke="#8B5CF6" stroke-width="3" class="vector-line e1b" />
+                        <polygon points="300,300 285,295 285,305" fill="#8B5CF6" class="vector-arrow draggable" data-vector="e1b" />
+                        <path d="M300,300 L400,100" fill="none" stroke="#EC4899" stroke-width="3" class="vector-line e2b" />
+                        <polygon points="400,100 395,115 405,115" fill="#EC4899" class="vector-arrow draggable" data-vector="e2b" />
+                        <text x="420" y="100" class="vector-label e1a-label text-primary font-bold" data-vector="e1a">e<tspan baseline-shift="super" font-size="0.7em">α</tspan><tspan baseline-shift="sub" font-size="0.7em">1</tspan></text>
+                        <text x="120" y="80" class="vector-label e2a-label text-secondary font-bold" data-vector="e2a">e<tspan baseline-shift="super" font-size="0.7em">α</tspan><tspan baseline-shift="sub" font-size="0.7em">2</tspan></text>
+                        <text x="320" y="320" class="vector-label e1b-label text-accent font-bold" data-vector="e1b">e<tspan baseline-shift="super" font-size="0.7em">β</tspan><tspan baseline-shift="sub" font-size="0.7em">1</tspan></text>
+                        <text x="30" y="320" class="vector-label e2b-label text-pink-500 font-bold" data-vector="e2b">e<tspan baseline-shift="super" font-size="0.7em">β</tspan><tspan baseline-shift="sub" font-size="0.7em">2</tspan></text>
+                        <circle cx="150" cy="100" r="4" fill="#333" />
+                        <text x="130" y="90" font-size="12">O</text>
+                    </svg>
+                </div>
+                <div class="interaction-guide bg-light p-4 rounded-lg shadow max-w-2xl mx-auto mt-6">
+                    <h3 class="font-semibold text-gray-800 mb-2">Interaction Guide:</h3>
+                    <p class="text-gray-700 text-sm">1. Drag vector arrows to adjust their length and direction.</p>
+                    <p class="text-gray-700 text-sm">2. Hover over vector labels to see highlight effect, click to pin highlight.</p>
+                    <p class="text-gray-700 text-sm">3. Use zoom in/out buttons to adjust view scale.</p>
+                    <p class="text-gray-700 text-sm">4. Click "Show Coordinates" to view vector coordinate information.</p>
+                    <p class="text-gray-700 text-sm">5. Click "Reset View" to restore initial state.</p>
+                </div>
+            </div>
+
+            <div id="a3-page2" class="a3-page-content hidden">
+                <h2 class="text-xl font-semibold text-center mb-4 text-gray-700">Probability & Position Charts</h2>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-gray-50 p-4 rounded-lg shadow">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-700">Probability Distribution</h3>
+                        <div class="relative w-full h-[300px]">
+                            <svg class="w-full h-full" viewBox="0 0 400 300">
+                                <line x1="50" y1="250" x2="350" y2="250" stroke="#333" stroke-width="2" />
+                                <line x1="50" y1="250" x2="50" y2="50" stroke="#333" stroke-width="2" />
+                                <polygon points="350,250 340,245 340,255" fill="#333" />
+                                <polygon points="50,50 45,60 55,60" fill="#333" />
+                                <line x1="100" y1="250" x2="100" y2="245" stroke="#333" />
+                                <line x1="150" y1="250" x2="150" y2="245" stroke="#333" />
+                                <line x1="350" y1="250" x2="350" y2="245" stroke="#333" />
+                                <line x1="50" y1="200" x2="45" y2="200" stroke="#333" />
+                                <line x1="50" y1="100" x2="45" y2="100" stroke="#333" />
+                                <text x="360" y="255" font-size="12" fill="#333">i/n</text>
+                                <text x="55" y="45" font-size="12" fill="#333">p</text>
+                                <text x="100" y="265" font-size="10" fill="#333">i/n</text>
+                                <text x="140" y="265" font-size="10" fill="#333">(i+Δn)/n</text>
+                                <text x="345" y="265" font-size="10" fill="#333">1</text>
+                                <text x="30" y="203" font-size="10" fill="#333">p₁ (Low)</text>
+                                <text x="30" y="103" font-size="10" fill="#333">p₂ (High)</text>
+                                <line x1="50" y1="200" x2="350" y2="200" stroke="#999" stroke-width="1" stroke-dasharray="4,2" />
+                                <line x1="50" y1="100" x2="200" y2="100" stroke="#999" stroke-width="1" stroke-dasharray="4,2" />
+                                <line x1="300" y1="100" x2="350" y2="100" stroke="#999" stroke-width="1" stroke-dasharray="4,2" />
+                                <rect x="100" y="100" width="50" height="100" fill="#C4B5FD" opacity="0.7" class="data-point" />
+                                <rect x="100" y="200" width="250" height="50" fill="#C4B5FD" opacity="0.5" class="data-point" />
+                                <rect x="300" y="100" width="50" height="100" fill="none" stroke="#9333EA" stroke-width="1.5" stroke-dasharray="4,2" class="data-point" />
+                                <line x1="170" y1="150" x2="280" y2="150" stroke="#7C3AED" stroke-width="2" stroke-dasharray="0" />
+                                <polygon points="280,150 270,145 270,155" fill="#7C3AED" />
+                                <rect id="tooltip1" class="tooltip" x="0" y="0" rx="4" ry="4" fill="white" stroke="#ccc" stroke-width="1" width="100" height="40" />
+                                <text id="tooltip-text1" class="tooltip" x="0" y="0" font-size="12" fill="#333"></text>
+                            </svg>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 p-4 rounded-lg shadow">
+                        <h3 class="text-lg font-semibold mb-4 text-gray-700">Position Chart</h3>
+                        <div class="relative w-full h-[300px]">
+                            <svg class="w-full h-full" viewBox="0 0 400 300">
+                                <line x1="50" y1="250" x2="350" y2="250" stroke="#333" stroke-width="2" />
+                                <line x1="50" y1="250" x2="50" y2="50" stroke="#333" stroke-width="2" />
+                                <polygon points="350,250 340,245 340,255" fill="#333" />
+                                <polygon points="50,50 45,60 55,60" fill="#333" />
+                                <line x1="50" y1="250" x2="50" y2="245" stroke="#333" />
+                                <line x1="200" y1="250" x2="200" y2="245" stroke="#333" />
+                                <line x1="350" y1="250" x2="350" y2="245" stroke="#333" />
+                                <line x1="50" y1="250" x2="45" y2="250" stroke="#333" />
+                                <line x1="50" y1="150" x2="45" y2="150" stroke="#333" />
+                                <line x1="50" y1="50" x2="45" y2="50" stroke="#333" />
+                                <text x="45" y="255" font-size="10" fill="#333">0</text>
+                                <text x="190" y="265" font-size="10" fill="#333">0.5</text>
+                                <text x="345" y="265" font-size="10" fill="#333">1</text>
+                                <text x="55" y="255" font-size="10" fill="#333">position</text>
+                                <text x="30" y="253" font-size="10" fill="#333">0</text>
+                                <text x="30" y="153" font-size="10" fill="#333">20</text>
+                                <text x="30" y="53" font-size="10" fill="#333">40</text>
+                                <path d="M100,100 Q200,110 300,150" fill="none" stroke="#10B981" stroke-width="2.5" class="data-point" />
+                                <path d="M100,80 Q200,90 300,120" fill="none" stroke="#A7F3D0" stroke-width="2" stroke-dasharray="5,3" class="data-point" />
+                                <rect id="tooltip2" class="tooltip" x="0" y="0" rx="4" ry="4" fill="white" stroke="#ccc" stroke-width="1" width="80" height="30" />
+                                <text id="tooltip-text2" class="tooltip" x="0" y="0" font-size="12" fill="#333"></text>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8 text-center text-gray-600"><p>Interactive features: Hover over chart elements to see details</p></div>
+                <div class="creation-steps max-w-4xl mx-auto mt-8"><h3 class="font-semibold text-gray-800 mb-2">Creation Process:</h3><p class="text-gray-700 text-sm">1. Design SVG charts with coordinate systems and axis labels</p><p class="text-gray-700 text-sm">2. Add data visualization elements (bars, curves, shapes)</p><p class="text-gray-700 text-sm">3. Implement interactive tooltips using JavaScript event listeners</p><p class="text-gray-700 text-sm">4. Apply CSS transitions for smooth hover effects</p><p class="text-gray-700 text-sm">5. Ensure responsive layout with Tailwind CSS grid system</p></div>
+            </div>
+            
+            <div id="a3-page3" class="a3-page-content hidden">
+                <h2 class="text-xl font-semibold text-center mb-4 text-gray-700">Enhanced Interactive Venn Diagram</h2>
+                <div style="max-width: 700px; margin: 0 auto;">
+                    <svg width="600" height="550" viewBox="0 0 600 550" xmlns="http://www.w3.org/2000/svg">
+                        <circle class="section" cx="180" cy="320" r="180" fill="#C8B6E2" fill-opacity="0.9" data-area="delete" data-description="删除操作：移除不需要的内容或元素" />
+                        <circle class="section" cx="300" cy="200" r="170" fill="#D8C3A5" fill-opacity="0.9" data-area="replace" data-description="替换操作：用新内容或元素替换现有项" />
+                        <circle class="section" cx="420" cy="320" r="180" fill="#F2D7A6" fill-opacity="0.9" data-area="rewrite" data-description="重写操作：对内容进行修改和重构" />
+                        <text x="100" y="320" font-size="24" font-weight="bold" class="label">I</text>
+                        <text x="300" y="120" font-size="24" font-weight="bold" class="label">II</text>
+                        <text x="500" y="320" font-size="24" font-weight="bold" class="label">III</text>
+                        <text x="210" y="220" font-size="24" font-weight="bold" class="label">IV</text>
+                        <text x="380" y="220" font-size="24" font-weight="bold" class="label">V</text>
+                        <text x="260" y="380" font-size="24" font-weight="bold" class="label">VI</text>
+                        <text x="300" y="270" font-size="24" font-weight="bold" class="label">VII</text>
+                        <text x="60" y="520" font-size="20" font-weight="bold" class="label">Delete</text>
+                        <text x="250" y="80" font-size="20" font-weight="bold" class="label">Replace</text>
+                        <text x="400" y="520" font-size="20" font-weight="bold" class="label">Rewrite</text>
+                    </svg>
+                    <p style="text-align: center; color: #666; margin-top: 10px;">交互提示：悬停在圆上查看高亮效果，点击圆可选中/取消选中</p>
+                    <div class="info-panel" id="infoPanel"><h3 id="panelTitle">操作信息</h3><p id="panelDescription"></p></div>
+                    <div class="count-display" id="selectionCount">已选中: 0 个区域</div>
+                    <button class="reset-btn" id="resetBtn">重置选中状态</button>
+                    <div class="creation-steps"><h3>Creation Process:</h3><p>1. Draw three overlapping circles with SVG at triangular positions</p><p>2. Apply distinct colors to each circle (purple, brown, yellow)</p><p>3. Add Roman numeral labels (I-VII) for intersection areas</p><p>4. Implement hover effects with CSS transitions</p><p>5. Add click-to-select functionality using JavaScript</p></div>
+                </div>
+            </div>
+            
+            <div id="a3-page4" class="a3-page-content hidden">
+                <h2 class="text-xl font-semibold text-center mb-4 text-gray-700">Cross Validation Accuracy Chart</h2>
+                <div class="mb-8"><h3 class="text-lg font-bold mb-3 text-gray-800">AI Model Development Process</h3><p class="text-gray-700 mb-2">This chart visualizes cross-validation results of three NLP models.</p><ul class="list-disc pl-5 text-gray-700 space-y-1"><li>Data collection and preprocessing for training AI models</li><li>Fine-tuning BERT, RoBERTa, and BART on domain-specific datasets</li><li>Implementing 10-fold cross-validation to ensure result reliability</li><li>Calculating accuracy metrics and standard deviation for each model</li><li>Visualizing performance comparisons using Chart.js</li><li>Analyzing results to identify the most effective AI model for the task</li></ul></div>
+                <div class="flex flex-wrap gap-3 mb-6"><button id="toggleData" class="control-btn">切换显示数据</button><button id="toggleType" class="control-btn">切换图表类型</button><button id="resetZoom4" class="control-btn">重置缩放</button><div class="ml-auto"><label class="inline-flex items-center mr-4"><input type="checkbox" id="showMean" checked class="form-checkbox h-5 w-5 text-primary"><span class="ml-2">显示平均准确率</span></label><label class="inline-flex items-center"><input type="checkbox" id="showStd" checked class="form-checkbox h-5 w-5 text-primary"><span class="ml-2">显示标准差</span></label></div></div>
+                <div class="chart-container"><canvas id="accuracyChart"></canvas></div>
+            </div>
+            
+            <div id="a3-page5" class="a3-page-content hidden">
+                <h2 class="text-xl font-semibold text-primary mb-2">Probability Density Distribution</h2>
+                <p class="text-neutral mb-2">Showing probability density distributions of p(x, y=0)*v(x) and p(x, y=1)*v(x)</p>
+                <div class="flex items-center gap-4 mb-6">
+                    <button id="theme-toggle" class="p-2 rounded-full hover:bg-gray-200 transition-colors"><i class="fa fa-moon-o text-xl"></i></button>
+                    <button id="reset-zoom5" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center gap-2"><i class="fa fa-refresh"></i><span>Reset View</span></button>
+                </div>
+                <div class="bg-white rounded-xl shadow-md p-4 md:p-6 mb-6 transition-all duration-300 hover:shadow-lg">
+                    <div class="chart-container"><canvas id="densityChart"></canvas><div id="infoBox5" class="info-box"></div></div>
+                </div>
+                <div class="bg-white rounded-xl shadow-md p-4 md:p-6 transition-all duration-300">
+                    <h3 class="text-lg font-semibold mb-4">Legend Explanation</h3>
+                    <div class="grid md:grid-cols-2 gap-6">
+                        <div>
+                            <div id="legend-0" class="legend-item mb-3"><div class="legend-color w-4 h-4 rounded-sm bg-secondary"></div><span>p(x, y=0)*v(x)</span></div>
+                            <div id="legend-1" class="legend-item"><div class="legend-color w-4 h-4 rounded-sm bg-primary"></div><span>p(x, y=1)*v(x)</span></div>
+                        </div>
+                        <ul class="list-disc pl-5 text-neutral space-y-1 text-sm">
+                            <li>Yellow curve represents p(x, y=0)*v(x)</li>
+                            <li>Blue curve represents p(x, y=1)*v(x)</li>
+                            <li>Gray shaded area indicates the overlapping part of the two distributions</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <div id="page-a4" class="page-content bg-white rounded-lg shadow-lg p-6 max-w-5xl w-full mx-auto">
+            <h1 class="text-2xl font-bold text-center mb-4 text-gray-800">Assignment 4: Model Accuracy Heatmap Under Different Attack Methods</h1>
+            <p class="text-center text-gray-600 mb-6">Visualizing accuracy percentage (0-100%) for various models and attack methods.</p>
+            
+            <div class="heatmap-container">
+                <div id="heatmap-chart">
+                    </div>
+                <div class="d3-tooltip" id="tooltip"></div>
+                <div class="legend" id="legend"></div>
+            </div>
+        </div>
+    </main>
+
+    <script>
+        let d3ChartInitialized = false;
+
+        // ==============================================
+        // 1. A1: PSI Readings Logic (Copied from assignment1.txt)
+        // ==============================================
+        function initPageA1() {
+            // Refresh interval set to 1 hour (3600000 ms) - matches Singapore's official PSI update frequency
+            const REFRESH_INTERVAL = 3600000;
+            let refreshTimer = null;
+
+            // English descriptions for reading types (aligned with Singapore's NEA terms)
+            const readingTypeLabels = {
+                "o3_sub_index": "Ozone Sub-Index",
+                "pm10_twenty_four_hourly": "PM10 24-Hour Average",
+                "pm10_sub_index": "PM10 Sub-Index",
+                "co_sub_index": "Carbon Monoxide Sub-Index",
+                "pm25_twenty_four_hourly": "PM2.5 24-Hour Average",
+                "so2_sub_index": "Sulfur Dioxide Sub-Index",
+                "co_eight_hour_max": "Carbon Monoxide 8-Hour Max",
+                "no2_one_hour_max": "Nitrogen Dioxide 1-Hour Max",
+                "so2_twenty_four_hourly": "Sulfur Dioxide 24-Hour Average",
+                "pm25_sub_index": "PM2.5 Sub-Index",
+                "psi_twenty_four_hourly": "24-Hour PSI",
+                "o3_eight_hour_max": "Ozone 8-Hour Max"
+            };
+
+            // Get status class based on PSI value
+            function getStatusClass(value) {
+                if (value <= 50) return "status-good";
+                if (value <= 100) return "status-moderate";
+                return "status-unhealthy";
+            }
+
+            // Get status text based on PSI value
+            function getStatusText(value) {
+                if (value <= 50) return "Good";
+                if (value <= 100) return "Moderate";
+                return "Unhealthy";
+            }
+
+            // Format time to Singapore timezone (24-hour format, consistent with NEA's display)
+            function formatTime(dateString) {
+                const date = new Date(dateString);
+                return date.toLocaleString('en-SG', {
+                    year: 'numeric',
+                    month: '2-digit',
+                    day: '2-digit',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+            }
+
+            // Update next refresh time display
+            function updateNextRefreshTime() {
+                const nextTime = new Date(Date.now() + REFRESH_INTERVAL);
+                document.getElementById('nextRefreshTime').textContent = formatTime(nextTime);
+            }
+
+            // Render table with latest PSI data
+            function renderTable(data) {
+                // Update last updated time with API's timestamp
+                const updateTime = data.items[0].update_timestamp;
+                document.getElementById('updateTime').textContent = formatTime(updateTime);
+                // Update next refresh time
+                updateNextRefreshTime();
+                const readings = data.items[0].readings;
+                const tableBody = document.querySelector('#psiTable tbody');
+                const readingTypes = Object.keys(readings);
+                const regions = ["west", "east", "central", "south", "north"];
+
+                // Clear existing table content before inserting new data
+                tableBody.innerHTML = '';
+                // Insert each reading type as a row with region values
+                readingTypes.forEach(type => {
+                    const row = document.createElement('tr');
+                    let rowHtml = `
+                        <td class="data-label">${type}</td>
+                        <td>${readingTypeLabels[type] || '-'}</td>
+                    `;
+                    
+                    // Add value and status badge for each region
+                    regions.forEach(region => {
+                        const value = readings[type][region];
+                        const statusClass = getStatusClass(value);
+                        const statusText = getStatusText(value);
+                        
+                        rowHtml += `
+                            <td>
+                                ${value} 
+                                <span class="status ${statusClass}">${statusText}</span>
+                            </td>
+                        `;
+                    });
+                    
+                    row.innerHTML = rowHtml;
+                    tableBody.appendChild(row);
+                });
+            }
+
+            // Fetch data from Singapore's open data API and render
+            function fetchAndRenderData() {
+                fetch('https://api.data.gov.sg/v1/environment/psi')
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Network Error: ${response.status} (${response.statusText})`);
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        renderTable(data);
+                    })
+                    .catch(error => {
+                        console.error('Failed to fetch PSI data:', error);
+                        const tableBody = document.querySelector('#psiTable tbody');
+                        tableBody.innerHTML = `<tr><td colspan="7">Failed to load data: ${error.message}. Will retry in 1 hour.</td></tr>`;
+                        // Update next refresh time even if fetch fails
+                        updateNextRefreshTime();
+                    });
+            }
+
+            // Initialize: First data load + start auto-refresh timer
+            function init() {
+                fetchAndRenderData();
+                refreshTimer = setInterval(fetchAndRenderData, REFRESH_INTERVAL);
+            }
+
+            // Ensure timer is only started once globally
+            if (!window.psiRefreshTimer) {
+                init();
+                window.psiRefreshTimer = refreshTimer; // Store timer globally for cleanup
+            }
+        }
+
+        // ==============================================
+        // 2. A3: Interactive Suite Logic (Copied from assignment3.txt)
+        // ==============================================
+        function initPageA3Navigation() {
+            // A3 Sub-Navigation logic (copied from A3)
+            const navButtonsA3 = document.querySelectorAll('.nav-btn-a3');
+            const pageContentsA3 = document.querySelectorAll('.a3-page-content');
+            
+            navButtonsA3.forEach(button => {
+                button.addEventListener('click', function() {
+                    const pageId = this.getAttribute('data-page');
+                    
+                    navButtonsA3.forEach(btn => btn.classList.remove('bg-primary', 'text-white'));
+                    this.classList.add('bg-primary', 'text-white');
+                    
+                    pageContentsA3.forEach(page => {
+                        page.classList.remove('active');
+                        page.classList.add('hidden');
+                    });
+                    document.getElementById(pageId).classList.remove('hidden');
+                    document.getElementById(pageId).classList.add('active');
+
+                    // Run the specific init function
+                    if (pageId === 'a3-page1') initPage1();
+                    if (pageId === 'a3-page2') initPage2();
+                    if (pageId === 'a3-page3') initPage3();
+                    if (pageId === 'a3-page4') initPage4();
+                    if (pageId === 'a3-page5') initPage5();
+                });
+            });
+
+            // Set initial active state
+            if (navButtonsA3.length > 0) {
+                navButtonsA3[0].classList.add('bg-primary', 'text-white');
+            }
+            const initialPage = document.querySelector('#a3-page1');
+            if (initialPage) {
+                initialPage.classList.remove('hidden');
+                initialPage.classList.add('active');
+            }
+            
+            // Run init for the default active A3 page and pre-run Chart.js initializations
+            initPage1();
+            initPage4(); 
+            initPage5(); 
+            initPage2();
+            initPage3();
+        }
+
+        // --- Assignment 3 functions (Vector Diagram, Charts, Venn, Validation, Density) ---
+
+        function initPage1() { 
+            // Get elements
+            const vectorLabels = document.querySelectorAll('#a3-page1 .vector-label');
+            const vectorArrows = document.querySelectorAll('#a3-page1 .vector-arrow.draggable');
+            const vectorSvg = document.getElementById('vector-svg');
+            const resetBtn = document.getElementById('reset-btn');
+            const zoomInBtn = document.getElementById('zoom-in');
+            const zoomOutBtn = document.getElementById('zoom-out');
+            const showCoordsBtn = document.getElementById('show-coords');
+            const vectorInfo = document.getElementById('vector-info');
+            
+            // Vector data - store start and end points of each vector
+            const vectorData = {
+                e1a: { start: { x: 150, y: 100 }, end: { x: 400, y: 100 } },
+                e2a: { start: { x: 150, y: 100 }, end: { x: 50, y: 300 } },
+                e1b: { start: { x: 50, y: 300 }, end: { x: 300, y: 300 } },
+                e2b: { start: { x: 300, y: 300 }, end: { x: 400, y: 100 } }
+            };
+            // Zoom-related variables
+            let currentScale = 1;
+            const scaleStep = 0.1;
+            const minScale = 0.5;
+            const maxScale = 1.5;
+            // Coordinate display state
+            let showingCoords = false;
+            // Add hover effects to each label
+            vectorLabels.forEach(label => {
+                // Hover effect
+                label.addEventListener('mouseenter', () => {
+                    const vectorId = label.dataset.vector;
+                    
+                    highlightVector(vectorId, true);
+                    if (showingCoords) {
+                        showVectorInfo(vectorId);
+                    }
+                });
+                
+                label.addEventListener('mouseleave', () => {
+                    const vectorId = label.dataset.vector;
+                    // Only remove highlight if not selected
+                    if (!label.classList.contains('selected')) {
+                        highlightVector(vectorId, false);
+                        if (showingCoords) {
+                            vectorInfo.classList.add('hidden');
+                        }
+                    }
+                });
+                
+                // Click to toggle selection state
+                label.addEventListener('click', () => {
+                    const vectorId = label.dataset.vector;
+                    label.classList.toggle('selected');
+                    label.classList.toggle('text-yellow-600');
+                    label.classList.toggle('scale-110');
+                    label.classList.toggle('font-extrabold');
+                    if (label.classList.contains('selected')) {
+                        highlightVector(vectorId, true);
+                        if (showingCoords) {
+                            showVectorInfo(vectorId);
+                        }
+                    } else {
+                        highlightVector(vectorId, false);
+                        if (showingCoords) {
+                            vectorInfo.classList.add('hidden');
+                        }
+                    }
+                });
+            });
+            
+            // Highlight a vector by ID
+            function highlightVector(vectorId, highlight) {
+                const line = document.querySelector(`#a3-page1 .vector-line.${vectorId}`);
+                const arrow = document.querySelector(`#a3-page1 .vector-arrow[data-vector="${vectorId}"]`);
+                
+                if (highlight) {
+                    line.setAttribute('stroke-width', '5');
+                    arrow.setAttribute('stroke', '#000');
+                    arrow.setAttribute('stroke-width', '1');
+                } else {
+                    line.setAttribute('stroke-width', '3');
+                    arrow.setAttribute('stroke', 'none');
+                    arrow.setAttribute('stroke-width', '0');
+                }
+            }
+            
+            // Show vector information
+            function showVectorInfo(vectorId) {
+                const vector = vectorData[vectorId];
+                const dx = vector.end.x - vector.start.x;
+                const dy = vector.end.y - vector.start.y;
+                const length = Math.sqrt(dx * dx + dy * dy).toFixed(1);
+                vectorInfo.innerHTML = `
+                    <strong>${vectorId}:</strong><br>
+                    Start: (${vector.start.x}, ${vector.start.y})<br>
+                    End: (${vector.end.x.toFixed(0)}, ${vector.end.y.toFixed(0)})<br>
+                    Components: (${dx.toFixed(0)}, ${dy.toFixed(0)})<br>
+                    Length: ${length}
+                `;
+                vectorInfo.classList.remove('hidden');
+            }
+            
+            // Zoom functionality
+            zoomInBtn.addEventListener('click', () => {
+                if (currentScale < maxScale) {
+                    currentScale += scaleStep;
+                    applyScale();
+                }
+            });
+            zoomOutBtn.addEventListener('click', () => {
+                if (currentScale > minScale) {
+                    currentScale -= scaleStep;
+                    applyScale();
+                }
+            });
+            function applyScale() {
+                vectorSvg.style.transform = `scale(${currentScale})`;
+                vectorSvg.style.transformOrigin = 'center';
+            }
+            
+            // Show/hide coordinate information
+            showCoordsBtn.addEventListener('click', () => {
+                showingCoords = !showingCoords;
+                showCoordsBtn.innerHTML = showingCoords ? 
+                    '<i class="fa fa-crosshairs mr-1"></i> Hide Coordinates' : 
+                    '<i class="fa fa-crosshairs mr-1"></i> Show Coordinates';
+                
+                if (!showingCoords) {
+                    vectorInfo.classList.add('hidden');
+                } else {
+                    // Check if there's a selected vector
+                    const selectedLabel = document.querySelector('#a3-page1 .vector-label.selected');
+                    if (selectedLabel) {
+                        showVectorInfo(selectedLabel.dataset.vector);
+                    }
+                }
+            });
+            // Reset button functionality
+            resetBtn.addEventListener('click', () => {
+                // Reset vector data
+                vectorData.e1a = { start: { x: 150, y: 100 }, end: { x: 400, y: 100 } };
+                vectorData.e2a = { start: { x: 150, y: 100 }, end: { x: 50, y: 300 } };
+                vectorData.e1b = { start: { x: 50, y: 300 }, end: { x: 300, y: 300 } };
+                vectorData.e2b = { start: { x: 300, y: 300 }, end: { x: 400, y: 100 } };
+                
+                // Update all vectors
+                Object.keys(vectorData).forEach(updateVector);
+                
+                // Update parallelogram
+                updateParallelogram();
+                
+                // Reset highlight and selection states
+                vectorLabels.forEach(label => {
+                    label.classList.remove('selected', 'text-yellow-600', 'scale-110', 'font-extrabold');
+                    highlightVector(label.dataset.vector, false);
+                });
+                // Reset zoom
+                currentScale = 1;
+                applyScale();
+                
+                // Reset coordinate display
+                showingCoords = false;
+                showCoordsBtn.innerHTML = '<i class="fa fa-crosshairs mr-1"></i> Show Coordinates';
+                vectorInfo.classList.add('hidden');
+            });
+            // Update vector position
+            function updateVector(vectorId) {
+                const vector = vectorData[vectorId];
+                const line = document.querySelector(`#a3-page1 .vector-line.${vectorId}`);
+                
+                if (line) {
+                    line.setAttribute('d', `M${vector.start.x},${vector.start.y} L${vector.end.x},${vector.end.y}`);
+                    // Update arrow position
+                    const arrow = document.querySelector(`#a3-page1 .vector-arrow[data-vector="${vectorId}"]`);
+                    if (arrow) {
+                        // Arrow position update logic (re-calculating position based on vector end point)
+                    }
+                }
+            }
+            
+            // Update parallelogram
+            function updateParallelogram() {
+                // Update parallelogram edges based on vectors
+                const e1aEnd = vectorData.e1a.end;
+                const e2aEnd = vectorData.e2a.end;
+                const e1bEnd = vectorData.e1b.end;
+                
+                const parallelogram = document.querySelector('#a3-page1 .vector-line:not([class*="diagonal"]):not([class*="e1a"]):not([class*="e2a"]):not([class*="e1b"]):not([class*="e2b"])');
+                if (parallelogram) {
+                    parallelogram.setAttribute('d', `M${vectorData.e1a.start.x},${vectorData.e1a.start.y} L${e1aEnd.x},${e1aEnd.y} L${e1bEnd.x},${e1bEnd.y} L${e2aEnd.x},${e2aEnd.y} Z`);
+                }
+                
+                // Update diagonals
+                const diagonal1 = document.querySelector('#a3-page1 .vector-line.diagonal-1');
+                if (diagonal1) {
+                    diagonal1.setAttribute('d', `M${vectorData.e1a.start.x},${vectorData.e1a.start.y} L${e1bEnd.x},${e1bEnd.y}`);
+                }
+                
+                const diagonal2 = document.querySelector('#a3-page1 .vector-line.diagonal-2');
+                if (diagonal2) {
+                    diagonal2.setAttribute('d', `M${e1aEnd.x},${e1aEnd.y} L${e2aEnd.x},${e2aEnd.y}`);
+                }
+            }
+            
+            // Make vectors draggable
+            let selectedElement = null;
+            let offset = { x: 0, y: 0 };
+            
+            vectorArrows.forEach(arrow => {
+                arrow.addEventListener('mousedown', startDrag);
+                arrow.addEventListener('touchstart', startDrag, { passive: true });
+            });
+            document.addEventListener('mousemove', drag);
+            document.addEventListener('touchmove', drag, { passive: true });
+            document.addEventListener('mouseup', endDrag);
+            document.addEventListener('touchend', endDrag);
+            function startDrag(evt) {
+                evt.preventDefault();
+                selectedElement = this;
+                
+                const vectorId = this.dataset.vector;
+                const vector = vectorData[vectorId];
+                // Calculate offset based on mouse/touch position
+                if (evt.type === 'mousedown') {
+                    const svgPoint = getSVGPoint(evt.clientX, evt.clientY);
+                    offset.x = svgPoint.x - vector.end.x;
+                    offset.y = svgPoint.y - vector.end.y;
+                } else { // touchstart
+                    const touch = evt.touches[0];
+                    const svgPoint = getSVGPoint(touch.clientX, touch.clientY);
+                    offset.x = svgPoint.x - vector.end.x;
+                    offset.y = svgPoint.y - vector.end.y;
+                }
+            }
+            
+            function drag(evt) {
+                if (selectedElement) {
+                    evt.preventDefault();
+                    const vectorId = selectedElement.dataset.vector;
+                    const vector = vectorData[vectorId];
+                    
+                    let svgPoint;
+                    if (evt.type === 'mousemove') {
+                        svgPoint = getSVGPoint(evt.clientX, evt.clientY);
+                    } else { // touchmove
+                        const touch = evt.touches[0];
+                        svgPoint = getSVGPoint(touch.clientX, evt.clientY);
+                    }
+                    
+                    // Update end point based on drag
+                    vector.end.x = svgPoint.x - offset.x;
+                    vector.end.y = svgPoint.y - offset.y;
+                    
+                    // Update dependent vectors
+                    if (vectorId === 'e1a') {
+                        // e2b's end point depends on e1a's end point
+                        vectorData.e2b.end.x = vector.end.x;
+                        vectorData.e2b.end.y = vector.end.y;
+                    } else if (vectorId === 'e2a') {
+                        // e1b's start point depends on e2a's end point
+                        vectorData.e1b.start.x = vector.end.x;
+                        vectorData.e1b.start.y = vector.end.y;
+                    } else if (vectorId === 'e1b') {
+                        // e2b's start point depends on e1b's end point
+                        vectorData.e2b.start.x = vector.end.x;
+                        vectorData.e2b.start.y = vector.end.y;
+                    }
+                    
+                    // Update all vectors and the parallelogram
+                    Object.keys(vectorData).forEach(updateVector);
+                    updateParallelogram();
+                    
+                    // Update coordinate info if showing
+                    if (showingCoords) {
+                        showVectorInfo(vectorId);
+                    }
+                }
+            }
+            
+            function endDrag() {
+                selectedElement = null;
+            }
+            
+            // Helper to convert client coordinates to SVG coordinates
+            function getSVGPoint(clientX, clientY) {
+                const pt = vectorSvg.createSVGPoint();
+                pt.x = clientX;
+                pt.y = clientY;
+                return pt.matrixTransform(vectorSvg.getScreenCTM().inverse());
+            }
+        }
+        
+        function initPage2() {
+            // 左侧图表交互
+            const leftChart = document.querySelector('#a3-page2 svg:first-of-type');
+            const tooltip1 = document.getElementById('tooltip1');
+            const tooltipText1 = document.getElementById('tooltip-text1');
+            
+            if (!leftChart) return;
+
+            // 为左侧图表元素添加交互
+            leftChart.querySelectorAll('.data-point').forEach(element => {
+                element.addEventListener('mouseenter', (e) => {
+                    const pt = leftChart.createSVGPoint();
+                    pt.x = e.clientX;
+                    pt.y = e.clientY;
+                    const svgPoint = pt.matrixTransform(leftChart.getScreenCTM().inverse());
+                    
+                    let text = '';
+                    if (element.tagName === 'rect' && element.getAttribute('fill') !== 'none') {
+                        text = element.getAttribute('height') > 50 ? 'High Probability' : 'Low Probability';
+                    } else if (element.getAttribute('stroke-dasharray') === '4,2') {
+                        text = 'Projected Area';
+                    }
+                    
+                    tooltip1.setAttribute('x', svgPoint.x + 10);
+                    tooltip1.setAttribute('y', svgPoint.y - 10);
+                    tooltipText1.setAttribute('x', svgPoint.x + 15);
+                    tooltipText1.setAttribute('y', svgPoint.y - 2);
+                    tooltipText1.textContent = text;
+                    
+                    tooltip1.style.opacity = '1';
+                    tooltipText1.style.opacity = '1';
+                    element.style.opacity = '1';
+                    element.style.stroke = '#7C3AED';
+                    element.style.strokeWidth = '2';
+                });
+                
+                element.addEventListener('mouseleave', () => {
+                    tooltip1.style.opacity = '0';
+                    tooltipText1.style.opacity = '0';
+                    element.style.opacity = '';
+                    element.style.stroke = '';
+                    element.style.strokeWidth = '';
+                });
+            });
+            
+            // 右侧图表交互
+            const rightChart = document.querySelector('#a3-page2 svg:last-of-type');
+            const tooltip2 = document.getElementById('tooltip2');
+            const tooltipText2 = document.getElementById('tooltip-text2');
+            
+            if (!rightChart) return;
+
+            rightChart.querySelectorAll('.data-point').forEach((element, index) => {
+                element.addEventListener('mouseenter', (e) => {
+                    const pt = rightChart.createSVGPoint();
+                    pt.x = e.clientX;
+                    pt.y = e.clientY;
+                    const svgPoint = pt.matrixTransform(rightChart.getScreenCTM().inverse());
+                    
+                    const text = index === 0 ? 'Actual Position' : 'Predicted Position';
+                    
+                    tooltip2.setAttribute('x', svgPoint.x + 10);
+                    tooltip2.setAttribute('y', svgPoint.y - 10);
+                    tooltipText2.setAttribute('x', svgPoint.x + 15);
+                    tooltipText2.setAttribute('y', svgPoint.y - 2);
+                    tooltipText2.textContent = text;
+                    
+                    tooltip2.style.opacity = '1';
+                    tooltipText2.style.opacity = '1';
+                    element.style.opacity = '1';
+                    element.style.stroke = '#10B981';
+                    element.style.strokeWidth = index === 0 ? '3.5' : '2.5';
+                });
+                
+                element.addEventListener('mouseleave', () => {
+                    tooltip2.style.opacity = '0';
+                    tooltipText2.style.opacity = '0';
+                    element.style.opacity = '';
+                    element.style.stroke = '';
+                    element.style.strokeWidth = index === 0 ? '2.5' : '2';
+                });
+            });
+        }
+        
+        function initPage3() {
+            // 获取所有可交互区域
+            const sections = document.querySelectorAll('#a3-page3 .section');
+            const infoPanel = document.getElementById('infoPanel');
+            const panelTitle = document.getElementById('panelTitle');
+            const panelDescription = document.getElementById('panelDescription');
+            const selectionCount = document.getElementById('selectionCount');
+            const resetBtn = document.getElementById('resetBtn');
+            
+            if (sections.length === 0) return;
+
+            // 加载保存的状态
+            function loadSavedState() {
+                const savedState = localStorage.getItem('vennDiagramState');
+                if (savedState) {
+                    const selectedAreas = JSON.parse(savedState);
+                    sections.forEach(section => {
+                        if (selectedAreas.includes(section.dataset.area)) {
+                            section.classList.add('selected');
+                        }
+                    });
+                    updateSelectionCount();
+                }
+            }
+            
+            // 保存当前状态
+            function saveCurrentState() {
+                const selectedAreas = Array.from(sections)
+                    .filter(section => section.classList.contains('selected'))
+                    .map(section => section.dataset.area);
+                localStorage.setItem('vennDiagramState', JSON.stringify(selectedAreas));
+            }
+            
+            // 更新选中计数
+            function updateSelectionCount() {
+                const count = document.querySelectorAll('#a3-page3 .section.selected').length;
+                if (selectionCount) selectionCount.textContent = `已选中: ${count} 个区域`;
+            }
+            
+            // 显示区域信息
+            function showAreaInfo(section) {
+                if (panelTitle && panelDescription) {
+                    panelTitle.textContent = section.dataset.area.charAt(0).toUpperCase() + section.dataset.area.slice(1);
+                    panelDescription.textContent = section.dataset.description;
+                    if (infoPanel) infoPanel.classList.add('active');
+                }
+            }
+            
+            // 为每个区域添加交互效果
+            sections.forEach(section => {
+                // 点击选中/取消选中
+                section.addEventListener('click', () => {
+                    section.classList.toggle('selected');
+                    updateSelectionCount();
+                    saveCurrentState();
+                    
+                    // 添加点击动画
+                    section.classList.add('scale');
+                    setTimeout(() => {
+                        section.classList.remove('scale');
+                    }, 200);
+                });
+                
+                // 鼠标悬停效果（未选中状态下）
+                section.addEventListener('mouseenter', () => {
+                    if (!section.classList.contains('selected')) {
+                        section.style.stroke = '#666';
+                        section.style.strokeWidth = '2';
+                    }
+                    // 显示信息面板
+                    showAreaInfo(section);
+                });
+                
+                // 鼠标离开恢复
+                section.addEventListener('mouseleave', () => {
+                    if (!section.classList.contains('selected')) {
+                        section.style.stroke = 'none';
+                        section.style.strokeWidth = '0';
+                    }
+                });
+            });
+            
+            // 重置按钮功能
+            if (resetBtn) {
+                resetBtn.addEventListener('click', () => {
+                    sections.forEach(section => {
+                        section.classList.remove('selected');
+                        section.style.stroke = 'none';
+                        section.style.strokeWidth = '0';
+                    });
+                    updateSelectionCount();
+                    localStorage.removeItem('vennDiagramState');
+                });
+            }
+            
+            // 初始加载
+            loadSavedState();
+        }
+        
+        let accuracyChart; // Global reference for Chart.js instance
+        function initPage4() {
+            // Check if chart already exists and destroy it to prevent conflicts
+            if (accuracyChart) {
+                accuracyChart.destroy();
+            }
+
+            // 模拟交叉验证数据
+            const cvData = {
+                models: ['BERT', 'RoBERTa', 'BART'],
+                meanAccuracy: [85.2, 87.6, 84.1],
+                stdDeviation: [2.3, 1.8, 2.7]
+            };
+            
+            // 创建图表
+            const ctx = document.getElementById('accuracyChart');
+            if (!ctx) return;
+            const ctx2D = ctx.getContext('2d');
+            
+            accuracyChart = new Chart(ctx2D, {
+                type: 'bar',
+                data: {
+                    labels: cvData.models,
+                    datasets: [
+                        {
+                            label: 'Mean Accuracy (%)',
+                            data: cvData.meanAccuracy,
+                            backgroundColor: 'rgba(245, 158, 11, 0.8)',
+                            borderColor: 'rgba(245, 158, 11, 1)',
+                            borderWidth: 2,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Standard Deviation',
+                            data: cvData.stdDeviation,
+                            backgroundColor: 'rgba(245, 158, 11, 0.3)',
+                            borderColor: 'rgba(245, 158, 11, 0.7)',
+                            borderWidth: 2,
+                            yAxisID: 'y1'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    // 添加缩放和平移功能
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        title: {
+                            display: true,
+                            text: 'Cross Validation Accuracy (%)',
+                            font: {
+                                size: 18,
+                                weight: 'bold'
+                            },
+                            padding: {
+                                bottom: 20
+                            }
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return `${context.dataset.label}: ${context.raw}%`;
+                                }
+                            }
+                        },
+                        zoom: {
+                            pan: {
+                                enabled: true,
+                                mode: 'xy'
+                            },
+                            zoom: {
+                                enabled: true,
+                                mode: 'xy'
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            title: {
+                                display: true,
+                                text: 'Mean Accuracy (%)'
+                            },
+                            beginAtZero: true,
+                            max: 100,
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            title: {
+                                display: true,
+                                text: 'Standard Deviation'
+                            },
+                            beginAtZero: true,
+                            max: 10,
+                            grid: {
+                                drawOnChartArea: false
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // 切换数据显示按钮
+            document.getElementById('toggleData').addEventListener('click', function() {
+                accuracyChart.data.datasets.forEach(dataset => {
+                    dataset.hidden = !dataset.hidden;
+                });
+                accuracyChart.update();
+            });
+            // 切换图表类型按钮
+            document.getElementById('toggleType').addEventListener('click', function() {
+                const newType = accuracyChart.config.type === 'bar' ? 'line' : 'bar';
+                accuracyChart.config.type = newType;
+                
+                // 调整线条图表的样式
+                if (newType === 'line') {
+                    accuracyChart.data.datasets.forEach(dataset => {
+                        dataset.fill = false;
+                        dataset.tension = 0.3;
+                        dataset.pointRadius = 6;
+                        dataset.pointHoverRadius = 8;
+                    });
+                } else {
+                    // 恢复柱状图样式
+                    accuracyChart.data.datasets.forEach((dataset, index) => {
+                        dataset.fill = true;
+                        dataset.tension = 0;
+                        dataset.pointRadius = 0;
+                        dataset.backgroundColor = index === 0 ? 'rgba(245, 158, 11, 0.8)' : 'rgba(245, 158, 11, 0.3)';
+                    });
+                }
+                
+                accuracyChart.update();
+            });
+            
+            // 重置缩放按钮
+            document.getElementById('resetZoom4').addEventListener('click', function() {
+                accuracyChart.resetZoom();
+            });
+            // 复选框控制数据显示
+            document.getElementById('showMean').addEventListener('change', function(e) {
+                accuracyChart.data.datasets[0].hidden = !e.target.checked;
+                accuracyChart.update();
+            });
+            document.getElementById('showStd').addEventListener('change', function(e) {
+                accuracyChart.data.datasets[1].hidden = !e.target.checked;
+                accuracyChart.update();
+            });
+        }
+        
+        let densityChart; // Global reference for Chart.js instance
+        function initPage5() {
+            // Check if chart already exists and destroy it to prevent conflicts
+            if (densityChart) {
+                densityChart.destroy();
+            }
+
+            // Generate sample data
+            function generateData() {
+                const data = {
+                    x: Array.from({length: 100}, (_, i) => i / 99),
+                    y0: [],
+                    y1: []
+                };
+                // Generate two overlapping normal distributions
+                data.x.forEach(x => {
+                    // First distribution - p(x, y=0)*v(x)
+                    const y0 = 3 * Math.exp(-Math.pow(x - 0.3, 2) / (2 * Math.pow(0.2, 2))) + 
+                               0.5 * Math.random();
+                    data.y0.push(y0);
+                    
+                    // Second distribution - p(x, y=1)*v(x)
+                    const y1 = 3 * Math.exp(-Math.pow(x - 0.7, 2) / (2 * Math.pow(0.2, 2))) + 
+                               0.5 * Math.random();
+                    data.y1.push(y1);
+                });
+                return data;
+            }
+            
+            const data = generateData();
+            // Create gradient for overlapping area
+            const ctx = document.getElementById('densityChart');
+            if (!ctx) return;
+            const ctx2D = ctx.getContext('2d');
+
+            const overlapGradient = ctx2D.createLinearGradient(0, 0, 0, 400);
+            overlapGradient.addColorStop(0, 'rgba(156, 163, 175, 0.8)');
+            overlapGradient.addColorStop(1, 'rgba(156, 163, 175, 0.1)');
+            
+            // Initialize chart
+            function initDensityChart() {
+                return new Chart(ctx2D, {
+                    type: 'line',
+                    data: {
+                        labels: data.x,
+                        datasets: [
+                            {
+                                label: 'p(x, y=0)*v(x)',
+                                borderColor: '#F59E0B',
+                                data: data.y0,
+                                backgroundColor: 'rgba(245, 158, 11, 0.1)',
+                                borderWidth: 3,
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 0,
+                                pointHoverRadius: 6,
+                                pointHoverBackgroundColor: '#F59E0B',
+                                pointHoverBorderColor: '#fff',
+                                pointHoverBorderWidth: 2,
+                                indexAxis: 'x',
+                            },
+                            {
+                                label: 'p(x, y=1)*v(x)',
+                                borderColor: '#3B82F6',
+                                data: data.y1,
+                                backgroundColor: overlapGradient,
+                                borderWidth: 3,
+                                fill: true,
+                                tension: 0.4,
+                                pointRadius: 0,
+                                pointHoverRadius: 6,
+                                pointHoverBackgroundColor: '#3B82F6',
+                                pointHoverBorderColor: '#fff',
+                                pointHoverBorderWidth: 2,
+                                indexAxis: 'x',
+                            }
+                        ]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                            callbacks: {
+                                onHover: function(e, elements) {
+                                    const infoBox = document.getElementById('infoBox5');
+                                    if (elements.length) {
+                                        const element = elements[0];
+                                        const datasetIndex = element.datasetIndex;
+                                        const index = element.index;
+                                        const value = this.data.datasets[datasetIndex].data[index].toFixed(4);
+                                        const xValue = this.data.labels[index].toFixed(4);
+                                        infoBox.innerHTML = `
+                                            <strong>${this.data.datasets[datasetIndex].label}</strong><br>
+                                            x: ${xValue}<br>
+                                            Value: ${value}
+                                        `;
+                                        // Position the info box near the mouse
+                                        const canvasPosition = this.canvas.getBoundingClientRect();
+                                        infoBox.style.left = (e.clientX - canvasPosition.left + 10) + 'px';
+                                        infoBox.style.top = (e.clientY - canvasPosition.top - 60) + 'px';
+                                        infoBox.style.opacity = '1';
+                                    } else {
+                                        document.getElementById('infoBox5').style.opacity = '0';
+                                    }
+                                }
+                            }
+                        },
+                        plugins: {
+                            legend: {
+                                display: false
+                            },
+                            zoom: {
+                                pan: {
+                                    enabled: true,
+                                    mode: 'x'
+                                },
+                                zoom: {
+                                    enabled: true,
+                                    mode: 'x'
+                                }
+                            }
+                        },
+                        scales: {
+                            x: {
+                                title: {
+                                    display: true,
+                                    text: 'x'
+                                },
+                                min: 0,
+                                max: 1
+                            },
+                            y: {
+                                title: {
+                                    display: true,
+                                    text: 'Density'
+                                },
+                                min: 0
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Theme toggle functionality (requires HTML body/html tag to have dark class applied)
+            function setupThemeToggle() {
+                const themeToggle = document.getElementById('theme-toggle');
+                
+                // Toggle theme
+                themeToggle.addEventListener('click', () => {
+                    document.documentElement.classList.toggle('dark');
+                    // Re-initialize chart to adapt to theme changes
+                    densityChart.destroy();
+                    densityChart = initDensityChart();
+                });
+            }
+            
+            // Legend click handlers
+            document.getElementById('legend-0').addEventListener('click', () => {
+                densityChart.data.datasets[0].hidden = !densityChart.data.datasets[0].hidden;
+                densityChart.update();
+                document.getElementById('legend-0').classList.toggle('opacity-50', densityChart.data.datasets[0].hidden);
+            });
+            
+            document.getElementById('legend-1').addEventListener('click', () => {
+                densityChart.data.datasets[1].hidden = !densityChart.data.datasets[1].hidden;
+                densityChart.update();
+                document.getElementById('legend-1').classList.toggle('opacity-50', densityChart.data.datasets[1].hidden);
+            });
+            // Reset zoom button
+            document.getElementById('reset-zoom5').addEventListener('click', () => {
+                densityChart.resetZoom();
+            });
+
+            // Initialization
+            densityChart = initDensityChart();
+            setupThemeToggle();
+        }
+
+        // ==============================================
+        // 3. A4: Heatmap Logic (Copied and adapted from assignment4.txt)
+        // ==============================================
+        function initPageA4() {
+            // Check if chart has already been initialized on this container (prevent duplicates)
+            const chartContainer = d3.select("#heatmap-chart");
+            if (chartContainer.select('svg').size() > 0) {
+                // Chart already exists, just return or perhaps trigger a resize/update if necessary
+                return;
+            }
+
+            // 1. Data (from assignment4.txt)
+            const data = [
+                { Attack: "No Attack", ERM: 94.85, DA: 94.21, PGDT: 84.38, TRADES: 80.42, MART: 81.54, RS: 89.45, IBP: 48.40, PRL: 93.82, TandT: 94.23 },
+                { Attack: "TIFGSM", ERM: 35.10, DA: 33.00, PGDT: 65.70, TRADES: 62.90, MART: 69.10, RS: 45.40, IBP: 40.20, PRL: 34.00, TandT: 92.80 },
+                { Attack: "MIFGSM", ERM: 0.00, DA: 0.00, PGDT: 50.90, TRADES: 51.90, MART: 50.50, RS: 5.80, IBP: 38.10, PRL: 0.00, TandT: 92.80 },
+                { Attack: "DIFGSM", ERM: 1.00, DA: 0.00, PGDT: 51.75, TRADES: 50.50, MART: 53.60, RS: 4.10, IBP: 38.10, PRL: 3.10, TandT: 92.80 },
+                { Attack: "VMIFGSM", ERM: 0.00, DA: 0.00, PGDT: 51.10, TRADES: 50.90, MART: 51.90, RS: 4.10, IBP: 38.10, PRL: 0.00, TandT: 93.90 },
+                { Attack: "TPGD", ERM: 38.10, DA: 39.20, PGDT: 69.30, TRADES: 69.10, MART: 70.10, RS: 48.50, IBP: 50.00, PRL: 28.90, TandT: 91.80 },
+                { Attack: "FGSM", ERM: 29.90, DA: 25.80, PGDT: 57.95, TRADES: 54.60, MART: 61.90, RS: 28.90, IBP: 38.10, PRL: 25.80, TandT: 93.80 },
+                { Attack: "RFGSM", ERM: 0.00, DA: 0.00, PGDT: 49.15, TRADES: 50.40, MART: 48.50, RS: 3.70, IBP: 38.10, PRL: 0.00, TandT: 90.00 },
+                { Attack: "BIM", ERM: 0.00, DA: 0.00, PGDT: 52.00, TRADES: 57.20, MART: 47.40, RS: 2.10, IBP: 38.10, PRL: 0.00, TandT: 90.70 },
+                { Attack: "FAB", ERM: 1.00, DA: 2.10, PGDT: 43.00, TRADES: 46.40, MART: 40.20, RS: 5.30, IBP: 38.10, PRL: 4.10, TandT: 90.10 },
+                { Attack: "CW", ERM: 0.00, DA: 0.00, PGDT: 32.20, TRADES: 35.10, MART: 29.90, RS: 1.00, IBP: 40.20, PRL: 1.00, TandT: 92.90 },
+                { Attack: "UPGD", ERM: 0.00, DA: 0.00, PGDT: 49.85, TRADES: 50.50, MART: 49.80, RS: 5.10, IBP: 38.10, PRL: 0.00, TandT: 93.80 },
+                { Attack: "FFGSM", ERM: 19.60, DA: 23.70, PGDT: 60.55, TRADES: 55.70, MART: 66.00, RS: 33.00, IBP: 42.30, PRL: 29.90, TandT: 92.80 },
+                { Attack: "Jitter", ERM: 11.30, DA: 12.40, PGDT: 48.15, TRADES: 47.40, MART: 49.50, RS: 34.00, IBP: 39.20, PRL: 24.70, TandT: 90.70 },
+                { Attack: "PGD", ERM: 0.00, DA: 0.00, PGDT: 57.40, TRADES: 54.60, MART: 60.80, RS: 7.20, IBP: 40.20, PRL: 0.00, TandT: 91.80 },
+                { Attack: "EOTPGD", ERM: 0.00, DA: 0.00, PGDT: 50.10, TRADES: 50.30, MART: 50.50, RS: 3.00, IBP: 38.10, PRL: 0.00, TandT: 90.70 },
+                { Attack: "APGD", ERM: 0.00, DA: 0.00, PGDT: 48.40, TRADES: 51.00, MART: 46.40, RS: 1.00, IBP: 38.10, PRL: 0.00, TandT: 90.70 },
+                { Attack: "NIFGSM", ERM: 0.00, DA: 0.00, PGDT: 57.95, TRADES: 56.70, MART: 59.80, RS: 7.20, IBP: 38.10, PRL: 1.00, TandT: 92.80 },
+                { Attack: "SiniFGSM", ERM: 4.10, DA: 1.00, PGDT: 59.00, TRADES: 56.70, MART: 61.90, RS: 23.70, IBP: 38.10, PRL: 12.40, TandT: 93.70 },
+                { Attack: "VNIFGSM", ERM: 0.00, DA: 0.00, PGDT: 50.45, TRADES: 53.00, MART: 48.50, RS: 5.10, IBP: 38.10, PRL: 0.00, TandT: 92.90 },
+                { Attack: "APGDT", ERM: 0.00, DA: 0.00, PGDT: 40.90, TRADES: 44.30, MART: 38.10, RS: 0.00, IBP: 38.10, PRL: 0.00, TandT: 88.70 },
+                { Attack: "Square", ERM: 0.00, DA: 1.00, PGDT: 50.40, TRADES: 54.00, MART: 47.40, RS: 3.10, IBP: 38.10, PRL: 2.10, TandT: 88.08 },
+                { Attack: "Add Gaussian Noise", ERM: 25.80, DA: 43.30, PGDT: 79.10, TRADES: 78.40, MART: 80.40, RS: 74.20, IBP: 42.30, PRL: 45.40, TandT: 87.60 },
+                { Attack: "OnePixel", ERM: 79.40, DA: 83.50, PGDT: 78.05, TRADES: 74.20, MART: 82.50, RS: 83.50, IBP: 42.50, PRL: 80.40, TandT: 89.70 },
+                { Attack: "Pixle", ERM: 0.00, DA: 0.00, PGDT: 12.55, TRADES: 11.30, MART: 14.40, RS: 1.00, IBP: 10.30, PRL: 0.00, TandT: 17.50 },
+                { Attack: "PGDL2", ERM: 1.00, DA: 0.00, PGDT: 35.80, TRADES: 36.10, MART: 36.10, RS: 5.20, IBP: 36.10, PRL: 0.00, TandT: 92.90 }
+            ];
+
+            // 2. Chart configuration
+            const containerElement = document.querySelector('.heatmap-container');
+            const containerWidth = containerElement ? containerElement.clientWidth : 1200; // Use container width
+            
+            // Adjusted margins and dynamic height calculation (from assignment4.txt)
+            const margin = { 
+                top: 60, 
+                right: 30, 
+                bottom: 120, // Expanded
+                left: 160    // Expanded
+            };
+            const attackCount = data.length; // 26 attacks
+            const rectHeight = 35; // Height of each rectangle
+            const width = Math.min(containerWidth - 40, 1200) - margin.left - margin.right;
+            const height = attackCount * rectHeight; // Dynamically calculate total height
+
+            // Clear previous chart content if it exists
+            chartContainer.html('');
+
+            // 3. Create SVG container
+            const svg = chartContainer
+                .append("svg")
+                .attr("width", width + margin.left + margin.right)
+                .attr("height", height + margin.top + margin.bottom)
+                .append("g")
+                .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
+            // 4. Define dimensions
+            const attacks = data.map(d => d.Attack).filter(Boolean);
+            const models = Object.keys(data[0] || {}).filter(key => key !== "Attack").filter(Boolean);
+
+            if (attacks.length === 0 || models.length === 0) {
+                svg.append("text")
+                    .attr("x", width / 2)
+                    .attr("y", height / 2)
+                    .attr("text-anchor", "middle")
+                    .text("Data loading failed, please check the data format");
+                return;
+            }
+
+            // 5. Scales
+            const x = d3.scaleBand()
+                .domain(models)
+                .range([0, width])
+                .padding(0.1);
+            
+            const y = d3.scaleBand()
+                .domain(attacks)
+                .range([0, height])
+                .padding(0.05);
+
+            // Color scale
+            const colorScale = d3.scaleSequential()
+                .domain([0, 100])
+                .interpolator(d3.interpolateRdYlGn);
+
+            // 6. Draw heatmap rectangles
+            const heatmapData = data.flatMap(d => 
+                models.map(model => ({
+                    attack: d.Attack,
+                    model: model,
+                    value: typeof d[model] === 'number' ? d[model] : 0
+                }))
+            );
+            
+            const tooltip = d3.select("#tooltip");
+
+            const rects = svg.selectAll("rect")
+                .data(heatmapData)
+                .enter()
+                .append("rect")
+                .attr("x", d => x(d.model))
+                .attr("y", d => y(d.attack))
+                .attr("width", x.bandwidth())
+                .attr("height", y.bandwidth())
+                .attr("fill", d => colorScale(d.value))
+                .attr("stroke", "#fff")
+                .attr("stroke-width", 0.5)
+                .style("opacity", 0)
+                .on("mouseover", function(event, d) {
+                    // Tooltip positioning adjusted for visibility
+                    const tooltipX = event.pageX + 10;
+                    const tooltipY = event.pageY - 20;
+
+                    tooltip.style("opacity", 1)
+                        .html(`
+                            <strong>Attack Method:</strong> ${d.attack}<br>
+                            <strong>Model:</strong> ${d.model}<br>
+                            <strong>Accuracy:</strong> ${d.value.toFixed(2)}%
+                        `)
+                        .style("left", tooltipX + "px")
+                        .style("top", tooltipY + "px");
+
+                    d3.select(this)
+                        .style("stroke", "#333")
+                        .style("stroke-width", 2)
+                        .style("opacity", 0.9);
+                })
+                .on("mouseout", function() {
+                    tooltip.style("opacity", 0);
+                    d3.select(this)
+                        .style("stroke", "#fff")
+                        .style("stroke-width", 0.5)
+                        .style("opacity", 1);
+                })
+                .transition()
+                .duration(1500)
+                .delay((d, i) => i * 3)
+                .style("opacity", 1);
+
+            // 8. Axes
+            // X-axis (Models)
+            svg.append("g")
+                .attr("transform", `translate(0, ${height})`)
+                .call(d3.axisBottom(x))
+                .selectAll("text")
+                .attr("transform", "rotate(-45)")
+                .attr("text-anchor", "end")
+                .attr("font-size", 11)
+                .attr("dy", "0.5em")
+                .attr("fill", "#333")
+                .style("white-space", "nowrap");
+            // Y-axis (Attack Methods)
+            svg.append("g")
+                .call(d3.axisLeft(y))
+                .selectAll("text")
+                .attr("font-size", 10)
+                .attr("fill", "#333")
+                .attr("dx", "-0.5em")
+                .style("text-anchor", "end");
+            
+            // Axis labels
+            svg.append("text")
+                .attr("x", width / 2)
+                .attr("y", height + margin.bottom - 30)
+                .attr("text-anchor", "middle")
+                .attr("font-size", 16)
+                .attr("font-weight", "bold")
+                .attr("fill", "#333")
+                .text("Models");
+            
+            svg.append("text")
+                .attr("transform", `rotate(-90) translate(${-height / 2}, -${margin.left - 70})`)
+                .attr("text-anchor", "middle")
+                .attr("font-size", 16)
+                .attr("font-weight", "bold")
+                .attr("fill", "#333")
+                .text("Attack Methods");
+
+            // 9. Color legend
+            const legendWidth = Math.min(width, 500);
+            const legendHeight = 20;
+            const legendSvg = d3.select("#legend")
+                .append("svg")
+                .attr("width", legendWidth + 40)
+                .attr("height", legendHeight + 40);
+
+            // Legend title
+            legendSvg.append("text")
+                .attr("x", legendWidth / 2)
+                .attr("y", 15)
+                .attr("text-anchor", "middle")
+                .attr("font-size", 14)
+                .attr("fill", "#666")
+                .text("Accuracy");
+            
+            // Legend gradient definition
+            const defs = legendSvg.append("defs");
+            const gradient = defs.append("linearGradient")
+                .attr("id", "colorGradient")
+                .attr("x1", "0%")
+                .attr("y1", "0%")
+                .attr("x2", "100%")
+                .attr("y2", "0%");
+            
+            gradient.append("stop")
+                .attr("offset", "0%")
+                .attr("stop-color", d3.interpolateRdYlGn(0))
+                .attr("stop-opacity", 1);
+            gradient.append("stop")
+                .attr("offset", "100%")
+                .attr("stop-color", d3.interpolateRdYlGn(1))
+                .attr("stop-opacity", 1);
+            
+            // Legend rectangle
+            legendSvg.append("rect")
+                .attr("x", 20)
+                .attr("y", 25)
+                .attr("width", legendWidth)
+                .attr("height", legendHeight)
+                .style("fill", "url(#colorGradient)")
+                .style("stroke", "#ccc")
+                .style("stroke-width", 1);
+            
+            // Legend ticks
+            const legendScale = d3.scaleLinear()
+                .domain([0, 100])
+                .range([20, 20 + legendWidth]);
+            const legendAxis = d3.axisBottom(legendScale)
+                .ticks(5)
+                .tickFormat(d => d + "%");
+            
+            legendSvg.append("g")
+                .attr("transform", `translate(0, ${25 + legendHeight})`)
+                .call(legendAxis)
+                .selectAll("text")
+                .attr("font-size", 11)
+                .attr("fill", "#666");
+
+            d3ChartInitialized = true;
+        }
+
+        // ==============================================
+        // 4. 页面控制和初始化逻辑 (最终修复版)
+        // ==============================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Main Navigation Functionality
+            const navButtons = document.querySelectorAll('.nav-btn');
+            const pageContents = document.querySelectorAll('.page-content');
+            
+            navButtons.forEach(button => {
+                button.addEventListener('click', function() {
+                    const pageId = this.getAttribute('data-page');
+                    
+                    // 1. Update Navigation Button Style
+                    navButtons.forEach(btn => btn.classList.remove('bg-primary', 'text-white'));
+                    this.classList.add('bg-primary', 'text-white');
+                    
+                    // 2. Switch Page Content
+                    pageContents.forEach(page => {
+                        page.classList.remove('active');
+                    });
+                    document.getElementById(pageId).classList.add('active');
+
+                    // 3. Run specific initialization functions upon navigation
+                    if (pageId === 'page-a1') initPageA1();
+                    if (pageId === 'page-a3') initPageA3Navigation();
+                    if (pageId === 'page-a4') initPageA4();
+                });
+            });
+
+            // Initial Setup: Activate the first page and run pre-initializations
+            const overviewBtn = document.querySelector('.nav-btn[data-page="page-overview"]');
+            if (overviewBtn) {
+                 overviewBtn.classList.add('bg-primary', 'text-white');
+            }
+            const overviewPage = document.getElementById('page-overview');
+            if (overviewPage) {
+                overviewPage.classList.add('active');
+            }
+            
+            // Run all initialization functions to ensure data/charts load correctly when needed.
+            initPageA1();
+            initPageA3Navigation(); 
+            initPage4(); // Pre-init Chart.js charts
+            initPage5(); 
+        });
+    </script>
+</body>
+</html>
